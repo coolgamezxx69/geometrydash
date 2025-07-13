@@ -1,0 +1,13 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "propro69",
+      "email": "harrysgames012@gmail.com",
+      "password": "$2b$10$kettTFmEl7OSu7bkL4tijuzR41gO/jn8dxSaz.PHc4XpHeP6uiFwO",
+      "friendCode": "GD7S1LCAPT",
+      "createdAt": "2025-07-13T12:54:06.049Z"
+    }
+  ],
+  "nextId": 2
+}

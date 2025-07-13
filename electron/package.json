@@ -1,0 +1,39 @@
+
+{
+  "name": "geometry-dash-desktop",
+  "version": "1.0.0",
+  "description": "Geometry Dash Desktop Application",
+  "main": "main.js",
+  "scripts": {
+    "electron": "electron .",
+    "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:5000 && electron .\"",
+    "build-electron": "electron-builder",
+    "dist": "npm run build && electron-builder --publish=never"
+  },
+  "build": {
+    "appId": "com.geometrydash.desktop",
+    "productName": "Geometry Dash",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "../dist/**/*",
+      "../node_modules/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "../client/public/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.9.1",
+    "concurrently": "^8.2.2",
+    "wait-on": "^7.2.0"
+  }
+}

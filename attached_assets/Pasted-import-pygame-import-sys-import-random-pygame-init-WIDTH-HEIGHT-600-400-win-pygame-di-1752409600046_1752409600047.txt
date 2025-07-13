@@ -1,0 +1,192 @@
+import pygame
+import sys
+import random
+
+pygame.init()
+WIDTH, HEIGHT = 600, 400
+win = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("Geometry Dash Gridified")
+
+# === Grid & Game Settings ===
+GRID_SIZE = 30
+MAX_JUMP_HEIGHT = GRID_SIZE * 2
+gravity = 0.8
+SHOW_GRID = False
+
+# === Colors & Fonts ===
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+GREEN = (0, 200, 0)
+GRAY = (200, 200, 200)
+font = pygame.font.SysFont(None, 36)
+
+# === Assets ===
+player_img = pygame.image.load("player.png").convert_alpha()
+player_img = pygame.transform.scale(player_img, (GRID_SIZE, GRID_SIZE))
+
+obstacle_img = pygame.image.load("obstacle.png").convert_alpha()
+obstacle_img = pygame.transform.scale(obstacle_img, (GRID_SIZE, GRID_SIZE))
+
+background_img = pygame.image.load("background.png").convert()
+background_img = pygame.transform.scale(background_img, (WIDTH, HEIGHT))
+
+menu_music = "menu_theme.mp3"
+level_music = "level1.mp3"
+
+# === State Variables ===
+player_x = GRID_SIZE * 3  # fixed horizontal position
+player_y = HEIGHT - GRID_SIZE * 3
+player_vel_y = 0
+on_ground = True
+score = 0
+obstacles = []
+current_level = 1
+
+# === Levels ===
+levels = {}
+for i in range(1, 101):
+    levels[i] = {
+        "speed": 5 + i // 15,
+        "gap": max(80, 300 - i * 2),
+        "music": level_music,
+        "max_score": 30 + i * 4
+    }
+
+def draw_grid():
+    for x in range(0, WIDTH, GRID_SIZE):
+        pygame.draw.line(win, GRAY, (x, 0), (x, HEIGHT))
+    for y in range(0, HEIGHT, GRID_SIZE):
+        pygame.draw.line(win, GRAY, (0, y), (WIDTH, y))
+
+def spawn_obstacle():
+    x = WIDTH
+    y = HEIGHT - GRID_SIZE * 3
+    obstacles.append(pygame.Rect(x, y, GRID_SIZE, GRID_SIZE))
+
+def reset_game():
+    global player_y, player_vel_y, on_ground, score, obstacles
+    player_y = HEIGHT - GRID_SIZE * 3
+    player_vel_y = 0
+    on_ground = True
+    score = 0
+    obstacles.clear()
+
+def crash_flash():
+    flash = pygame.Surface((WIDTH, HEIGHT))
+    flash.fill((255, 0, 0))
+    win.blit(flash, (0, 0))
+    pygame.display.flip()
+    pygame.time.wait(300)
+    pygame.mixer.music.stop()
+
+def main_menu():
+    global current_level
+    pygame.mixer.music.load(menu_music)
+    pygame.mixer.music.play(-1)
+    pulse = 0
+    dir = 1
+    running = True
+
+    while running:
+        win.blit(background_img, (0, 0))
+        pulse += dir
+        if pulse >= 100 or pulse <= 0:
+            dir *= -1
+        title = font.render("Geometry Dash Grid", True, (pulse+155, pulse+155, pulse+155))
+        play_text = font.render("Press ENTER to Start", True, BLACK)
+        level_text = font.render(f"Level {current_level} (←/→)", True, BLACK)
+
+        win.blit(title, (120, 80))
+        win.blit(play_text, (120, 130))
+        win.blit(level_text, (120, 180))
+
+        pygame.display.flip()
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_RETURN]:
+            running = False
+        elif keys[pygame.K_LEFT]:
+            current_level = max(1, current_level - 1)
+            pygame.time.wait(100)
+        elif keys[pygame.K_RIGHT]:
+            current_level = min(len(levels), current_level + 1)
+            pygame.time.wait(100)
+
+def game_loop():
+    global player_y, player_vel_y, on_ground, score, SHOW_GRID, obstacles
+
+    level = levels[current_level]
+    clock = pygame.time.Clock()
+    pygame.mixer.music.load(level["music"])
+    pygame.mixer.music.play(-1)
+    speed = level["speed"]
+    gap = level["gap"]
+    max_score = level["max_score"]
+    spawn_timer = 0
+
+    while True:
+        clock.tick(60)
+        win.blit(background_img, (0, 0))
+        if SHOW_GRID:
+            draw_grid()
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                sys.exit()
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_g:
+                    SHOW_GRID = not SHOW_GRID
+
+        keys = pygame.key.get_pressed()
+        if keys[pygame.K_SPACE] and on_ground:
+            player_vel_y = -MAX_JUMP_HEIGHT / 6
+            on_ground = False
+
+        player_vel_y += gravity
+        player_y += player_vel_y
+
+        ground_level = HEIGHT - GRID_SIZE * 3
+        if player_y >= ground_level:
+            player_y = ground_level
+            player_vel_y = 0
+            on_ground = True
+
+        player_rect = pygame.Rect(player_x, int(player_y), GRID_SIZE, GRID_SIZE)
+        win.blit(player_img, player_rect.topleft)
+
+        spawn_timer += 1
+        if spawn_timer >= gap // speed:
+            spawn_obstacle()
+            spawn_timer = 0
+
+        for obstacle in obstacles[:]:
+            obstacle.x -= speed
+            win.blit(obstacle_img, obstacle.topleft)
+            if obstacle.right < 0:
+                obstacles.remove(obstacle)
+                score += 1
+            if player_rect.colliderect(obstacle):
+                crash_flash()
+                return
+
+        pygame.draw.rect(win, BLACK, (0, HEIGHT - GRID_SIZE, WIDTH, GRID_SIZE))
+        score_text = font.render(f"Score: {score}", True, BLACK)
+        win.blit(score_text, (10, 10))
+
+        bar_width = 200
+        bar_x = WIDTH // 2 - bar_width // 2
+        bar_y = 10
+        ratio = min(score / max_score, 1.0)
+        fill_width = int(ratio * bar_width)
+        pygame.draw.rect(win, BLACK, (bar_x, bar_y, bar_width, 20), 2)
+        pygame.draw.rect(win, GREEN, (bar_x, bar_y, fill_width, 20))
+
+        pygame.display.flip()
+
+# === Run Game ===
+while True:
+    reset_game()
+    main_menu()
+    game_loop()
